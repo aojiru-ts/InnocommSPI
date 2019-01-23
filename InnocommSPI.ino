@@ -1,19 +1,18 @@
 /*
- * InnocommSPI.ino - Demo application to send sigfox messages using Innocomm eval board SN10-1X_EVB
- * This application should work with any board/module using NXP OL2385 chip and sigfox library
- * NXP SPI protocol is explained here: http://www.nxp.com/assets/documents/data/en/user-guides/OL2385SWUG.pdf
- * Innocomm module description: http://www.innocomm.com/en/product_inner.aspx?num=123
- * Created by @aureleq, sigfox
- * April 6th, 2017
+ * Demo application that sends messages with Arduino using the "Sigfox 3 Click" module with Innocomm SN10-13.
+ * 
+ * Please note that the Innocomm SN10-13 used in this application is for RCZ3,
+ * so you need to modify the code depending on the module you are using.
+ * 
+ * I checked the operation with Arduino UNO and Leonardo.
+ * 
+ * If you would like to know about the SPI command,
+ * please refer to this link:https://www.nxp.com/docs/en/supporting-information/SIGFOX-SPI-COMMAND-INTERFACE-DESC.xlsx
  * 
  * 
- * Pins Arduino MKR1000:
- *  SCLK: pin 9
- *  SDO/MISO: pin 10
- *  SDI/MOSI: pin 8
- *  CS: pin 6 
- *  ACK: pin 7
- *  
+ * **This code was forked from here:https://github.com/aureleq/InnocommSPI
+ * 
+ * 
  *  Pins Arduino UNO:
  *  ***** NOTE: Arduino GPIOs supply 5V => Innocomm GPIOs expects a 3V3 so level-shifter may be required *****
  *  SCLK: pin 13
@@ -38,8 +37,8 @@
 #define debugln(x)
 #endif
 
-const int ackPin = 7; // 9
-const int chipSelectPin = 6; // 8
+const int ackPin = 9;
+const int chipSelectPin = 8;
 const SPISettings spiConf = SPISettings(125000, MSBFIRST, SPI_MODE1);
 
 // SPI buffers for rx and tx
@@ -73,7 +72,7 @@ void loop() {
   uint8_t sigPayload[] = {0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x53, 0x69, 0x67, 0x66, 0x6f, 0x78}; // "Hello sigfox"
   
   sendWakeUp();
-  setRCZ1(); // apparently need to be called before each transmission
+  setRCZ3(); // apparently need to be called before each transmission
   sendPayload(sigPayload, 12); // uncomment to send uplink message only
   //sendPayload(sigPayload, 12, 1); // request downlink message
   //sendBit(); // uncomment to send single bit
@@ -104,9 +103,9 @@ void sendToSleep() {
 
   errorCode = rxBuffer[1];
   ol2385State = rxBuffer[2];
-  if (errorCode == 0)
+  if (errorCode == 0){
     Serial.println("Module put in deep sleep successful!");
-  else {
+  }else {
     Serial.print("SFX_ERR: ");
     printByte(errorCode);
     Serial.println();
@@ -132,7 +131,7 @@ void getDeviceInfo() {
     printByte(rxBuffer[i+2]);
   Serial.println();
   Serial.print("Device PAC: ");
-  for (i=8; i>0; i--)
+  for (i=1; i<=8; i++)
     printByte(rxBuffer[i+6]);
   Serial.println();
   Serial.print("Library version: ");
@@ -142,19 +141,61 @@ void getDeviceInfo() {
 }
 
 
-// Set Radio Zone 1 (ETSI)
-void setRCZ1() {
+// Set Radio Zone 3
+void setRCZ3() {
   uint8_t i;
-  Serial.println("Setting RCZ1");
+  Serial.println("Setting RCZ3");
   
-  txBuffer[0] = 0x02; // Length
-  txBuffer[1] = 0x15; // RCZ1 code
-  sendDataSPI(2);
+  txBuffer[0] = 0x06; // Length
+  txBuffer[1] = 0x17; // RCZ3 code
+
+  txBuffer[2] = 0x00; // TX Attenuation steps
+  txBuffer[3] = 0x01; // XTAL used
+  txBuffer[4] = 0x03; // TX Repeat Number
+  txBuffer[5] = 0x00; // PA Type
+
+  sendDataSPI(6);
   delay(5);
   recvDataSPI();
   
   errorCode = rxBuffer[1];
   ol2385State = rxBuffer[2];
+
+  debug("errorCode:");
+  debugln(errorCode);
+  expandFrequency();
+}
+
+void expandFrequency(){
+    uint8_t i;
+  Serial.println("Setting expand-Frequency");
+  
+  txBuffer[0] = 0x0F; // Length
+  txBuffer[1] = 0x1F; // Set FCC Macro Channel
+
+  txBuffer[2] = 0x00;
+  txBuffer[3] = 0x00;
+  txBuffer[4] = 0x00;
+  txBuffer[5] = 0x03;
+  
+  txBuffer[6] = 0x00;
+  txBuffer[7] = 0x00;
+  txBuffer[8] = 0x13;
+  txBuffer[9] = 0x88;
+
+  txBuffer[10] = 0x00;
+  txBuffer[11] = 0x00;
+  txBuffer[12] = 0x01;
+  txBuffer[13] = 0x00;
+
+  txBuffer[14] = 0x00;
+  sendDataSPI(15);
+  delay(5);
+  recvDataSPI();
+  
+  errorCode = rxBuffer[1];
+  ol2385State = rxBuffer[2];
+
 }
 
 
@@ -170,9 +211,9 @@ void sendBit() {
   
   errorCode = rxBuffer[1];
   ol2385State = rxBuffer[2];
-  if (errorCode == 0)
+  if (errorCode == 0){
     Serial.println("Bit transmission successful!");
-  else {
+  }else {
     Serial.print("SFX_ERR: ");
     printByte(errorCode);
     Serial.println();
@@ -281,9 +322,10 @@ void sendDataSPI(uint8_t bufLength) {
   uint8_t i;
   
   // Ack pin must be high before starting the transmission protocol
-  while(digitalRead(ackPin) == LOW) {
+/*   while(digitalRead(ackPin) == LOW) {
     delay(1);
-  }
+  } *///***It does not work with Sigfox 3 Click.
+
   // set CS pin low
   digitalWrite(chipSelectPin, LOW);
   debugln("----- SPI Setting CS low");
@@ -317,15 +359,17 @@ void sendDataSPI(uint8_t bufLength) {
 
 // this function prints a byte in hex format as %02x
 void printByte(uint8_t b) {
-  if (b < 0 || b > 255)
+  if (b < 0 || b > 255){
+
     Serial.print("BYTE_ERR");
-  else {
+  } else {
     if (b < 16) {
       Serial.print("0");
       Serial.print(b, HEX);
     }
-    else
+    else{
       Serial.print(b, HEX);
+    }
   }
 }
 
