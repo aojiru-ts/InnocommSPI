@@ -1,7 +1,7 @@
 /*
- * Demo application that sends messages with Arduino using the "Sigfox 3 Click" module with Innocomm SN10-13.
+ * Demo application to send a message with "Sigfox 3 Click" module and Arduino.
  * 
- * Please note that the Innocomm SN10-13 used in this application is for RCZ3,
+ * Please note that "Sigfox 3 Click"(Innocomm SN10-13) used in this application is for RCZ3,
  * so you need to modify the code depending on the module you are using.
  * 
  * I checked the operation with Arduino UNO and Leonardo.
@@ -161,8 +161,6 @@ void setRCZ3() {
   errorCode = rxBuffer[1];
   ol2385State = rxBuffer[2];
 
-  debug("errorCode:");
-  debugln(errorCode);
   expandFrequency();
 }
 

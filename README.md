@@ -1,5 +1,5 @@
 # InnocommSPI
-Demo application that sends messages with Arduino using the "Sigfox 3 Click" module with Innocomm SN10-13.  
+Demo application to send a message with "Sigfox 3 Click" module and Arduino.  
 
 This code was forked from here : https://github.com/aureleq/InnocommSPI
 
@@ -9,7 +9,7 @@ This should work with Arduino UNO and Leonardo but you may need a level-shifter 
 
 If you would like to know about the SPI command, please refer to this link : https://www.nxp.com/docs/en/supporting-information/SIGFOX-SPI-COMMAND-INTERFACE-DESC.xlsx
 
-Please note that the Innocomm SN10-13 used in this application is for RCZ3, so you need to modify the code depending on the module you are using.  
+Please note that "Sigfox 3 Click"(Innocomm SN10-13) used in this application is for RCZ3, so you need to modify the code depending on the module you are using.  
 
 ## Setup
 Connect the shield to the Arduino pins as follows:
